@@ -103,3 +103,27 @@ anim.save('Plot0.gif')
 #hf = h5.File('Plot0.h5', 'w')
 #hf.create_dataset('ne_map', data=D)
 #hf.close()
+
+'''
+#fonction récursive
+def update_D_recursive(NE, size, sim_t, t=0, D=None):
+    if D is None:
+        D = np.zeros([size, size, sim_t])
+        D[:, :, 0] = NE
+        
+    if t < sim_t - 1:
+        reste = []
+        for p in range(10):
+            reste.append(NE[:, p])
+
+        for j in range(0, size - 10):
+            NE[:, j] = NE[:, j + 10]
+        for q in range(10):
+            NE[:, size - q - 1] = reste[q]
+        
+        D[:, :, t+1] = NE
+        
+        return update_D_recursive(NE, size, sim_t, t+1, D)
+    
+    return D
+    '''
