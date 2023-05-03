@@ -122,3 +122,136 @@ anim.save('Plot01.gif')
 hf = h5.File('Plot01.h5', 'w')
 hf.create_dataset('ne_map', data=D)
 hf.close()
+
+
+
+
+#Version 2
+
+
+
+
+#Méthode lente mais qui fonctionne
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import math
+#import h5py as h5
+import random
+import matplotlib.cm as cm
+
+
+#simulation parameters
+size=300 #grid size
+sim_t=128#time points
+back_flow=0.0 #additional background flow in y direction otherwise everything moves 1 point per time point
+dt=0.01
+pas=5
+#physical parameters
+diffusion=0.00001/size/size
+viscosity=0
+dv_max=0.0#velocity fluctuation
+dv_shear=0.16 #max velocity of the parabolic sheared flow
+fluc=0 #random small fluctuations yes or no 1 or 0
+n_max=1e19 #density max of the linear profile
+mode_A=1e19 #mode amplitude of the density
+#geometry
+T=int(size/2) #mode period size/2 gives 4 periods of the mode in y direction
+shift_pol=1 #to shift mode in the y direction
+pos_0=150#position of the 0 density of the linear profile
+pos_shear=150#position of the shear center
+shear_half_width=45
+L=2*shear_half_width # modes have two rows within the sheared flow
+tilt=20/45#tilt 0 or 1 for 45 degrees tilt
+NE=np.zeros([size, size])
+
+'''
+
+#initialisation
+
+vxxx=np.zeros([size, size])
+vyyy=np.zeros([size, size])
+vyyy0=np.zeros([size, size])
+vxxx0=np.zeros([size, size])
+
+
+
+#fluctuation vitesse
+for ii in range(size):
+    for jj in range(size):
+        vxxx[ii,jj]=dv_max*math.sin(ii/L+fluc*random.random())*math.sin(jj/T+fluc*random.random())
+for ii in range(size):
+    for jj in range(size):
+        vyyy[ii,jj]=dv_max*math.cos(ii/L+fluc*random.random())*math.cos(jj/T+fluc*random.random())
+for ii in range(pos_shear-shear_half_width,pos_shear+shear_half_width):
+    for jj in range(size):
+        vyyy0[ii,jj]=vyyy0[ii,jj]+dv_shear*(1-(ii-pos_shear)**2/shear_half_width**2)
+
+'''
+#création carte de densité
+for jj in range(size):
+    NE[0:pos_0,jj]=np.linspace(n_max,0,pos_0)
+    for jjj in range(pos_0-10,pos_0+10):
+           NE[jjj-1,jj]=n_max*(jjj-pos_0-10)**2/(pos_0)/40
+
+#perturbations
+for ii in range(2*shear_half_width-1):
+    for jj in range(size):
+        NE[ii+pos_shear-shear_half_width,jj]= NE[ii+pos_shear-shear_half_width,jj]+mode_A*(math.sin(2*math.pi*(ii)/L+fluc*random.random())*math.cos(2*math.pi*(jj+2*tilt*abs(ii-shear_half_width)/2+shift_pol)/T+fluc*random.random()))**2
+plt.pcolor(NE)
+
+'''
+# déplacement perturbations
+D=np.zeros([size,size,sim_t])
+D[:,:,0]=NE
+reste=[]
+for t in range(sim_t):
+    reste = NE[:,size-1]
+    for j in range(0,size-1):
+        NE[:,j] = NE[:,j+1]
+    NE[:,size-1] = reste
+    D[:,:,t]=NE
+    #plt.pcolor(NE)
+    #plt.colorbar()
+    #plt.savefig('fluidlin',dpi=240)
+    #plt.show()
+
+'''
+
+D=np.zeros([size,size,sim_t])
+D[:,:,0]=NE
+reste=np.zeros([size,pas])
+for t in range(sim_t):
+    for p in range(pas):
+        reste[:,p]=NE[:,p]
+    for j in range(0,size-pas):
+        NE[:,j] = NE[:,j+pas]
+    for q in range(pas):
+        NE[:,size-q-1] = reste[:,pas-q-1]
+    D[:,:,t]=NE
+
+
+
+
+#animation gif
+
+fig, ax = plt.subplots()
+image=D[:,:,0]
+cax = ax.imshow(image, vmin=0.0, vmax=1e19, extent=[0, size+1, 0, size+1], aspect='auto')
+ax.set_title('Density')
+
+
+def animate(i):
+     cax.set_array(D[:,:,i])
+
+anim = animation.FuncAnimation(fig, animate, interval=30, frames=sim_t)
+
+plt.show()
+
+anim.save('Plot01.gif')
+
+#hf = h5.File('Plot01.h5', 'w')
+#hf.create_dataset('ne_map', data=D)
+#hf.close()
