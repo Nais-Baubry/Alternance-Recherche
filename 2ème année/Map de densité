@@ -1,0 +1,66 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import h5py as h5
+
+
+n_max=6e19               #maximum density for a linear profile
+NX=800                   #grid size
+NY=800
+Xpml=100
+mode_A=6e19 #mode amplitude of the density
+profile_type = 1
+sim_t=2     #pas de temps
+pas=10        #pas de déplacement
+size=800
+
+density0=np.zeros((NX,NY))
+
+if profile_type==1:
+    pos_0=NX-Xpml #6 wavelengths of 0 density
+    for i in range(NY):
+        density0[0:pos_0,i]=np.linspace(n_max,0,pos_0)
+        for j in range(pos_0-10,pos_0+10):
+            density0[j-1,i]=n_max*(j-pos_0-10)**2/(pos_0)/40
+        for k in range(300,400):
+            density0[k,i]+=mode_A*(np.sin(k*2*np.pi/200)*np.sin(i*2*np.pi/400))**2
+            
+    plt.pcolor(density0)            
+            
+
+
+NE=density0 
+    
+D=np.zeros([size,size,sim_t])
+D[:,:,0]=NE
+reste=[]
+for t in range(sim_t):
+    for p in range(10):
+        reste.append(NE[:,p])
+    for j in range(0,size-10):
+        NE[:,j] = NE[:,j+10]
+    for q in range(10):   
+        NE[:,size-q-1] = reste[10-q-1]
+    D[:,:,t]=NE  
+
+     
+
+#animation gif
+
+fig, ax = plt.subplots()
+image=D[:,:,0]
+cax = ax.imshow(image, vmin=0, vmax=6e19, extent=[0, NX+1, 0, NY+1], aspect='auto')
+ax.set_title('Density')
+
+   
+def animate(i):
+     cax.set_array(D[:,:,i])
+
+anim = animation.FuncAnimation(fig, animate, interval=30, frames=sim_t)
+
+plt.show()
+
+anim.save('Turbulence_map1.gif')
+hf = h5.File('Turbulence_map1.h5', 'w')
+hf.create_dataset('ne_map', data=D)
+hf.close()
